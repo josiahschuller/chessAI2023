@@ -1,7 +1,14 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Game from "./Game";
 
 function App() {
   return (
-    <p>yo</p>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Game />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
