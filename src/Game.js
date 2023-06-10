@@ -32,12 +32,15 @@ class Game extends Component {
     this.playerColour = props.playerColour;
     // Opponent
     this.opponent = props.opponent;
+  }
 
-    if (props.playerColour === "b") {
-      // Execute opponent's move first if the player's colour is black
+  componentDidMount = () => setTimeout(() => {
+    // Check if it's the opponent's turn
+    if (new Chess(this.state.fen).turn() !== this.playerColour) {
+      // Execute opponent's move if it is their turn
       this.executeOpponentMove();
     }
-  }
+  }, 50);
 
   componentDidUpdate = () => setTimeout(() => {
     // Check if it's the opponent's turn
