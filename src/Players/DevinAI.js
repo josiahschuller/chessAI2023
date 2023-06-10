@@ -16,7 +16,7 @@ export default class DevinAI extends Player {
   executeMove = (chess) => {    
     const colour = chess.turn();
     
-    let result = minimax(chess.fen(), colour, 4);
+    let result = minimax(chess.fen(), colour, 4, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
     let bestMove = result[0];
     let bestMoveScore = result[1];
 
@@ -29,8 +29,15 @@ export default class DevinAI extends Player {
   }
 }
 
-
-function minimax(fen, colour, depth) {
+/*
+* @param {string} fen - The FEN string of the Chess board to evaluate
+* @param {string} colour - The colour to evaluate for
+* @param {number} depth - The depth to evaluate to
+* @param {number} alpha - The alpha value for alpha-beta pruning
+* @param {number} beta - The beta value for alpha-beta pruning
+* @returns {array} - [bestMove, bestScore]
+*/
+function minimax(fen, colour, depth, alpha, beta) {
   const chess = new Chess(fen);
   if (depth === 0 || chess.isGameOver()) {
     return [null, evaluateFen(fen)];
@@ -46,11 +53,16 @@ function minimax(fen, colour, depth) {
       let newChess = new Chess(chess.fen());
       newChess.move(possibleMoves[idx]);
 
-      let result = minimax(newChess.fen(), "b", depth - 1);
+      let result = minimax(newChess.fen(), "b", depth - 1, alpha, beta);
       let score = result[1];
       if (score > maxScore) {
         maxMove = possibleMoves[idx];
         maxScore = score;
+      }
+
+      alpha = Math.max(alpha, score);
+      if (beta <= alpha) {
+        break;
       }
     }
     return [maxMove, maxScore];
@@ -62,11 +74,16 @@ function minimax(fen, colour, depth) {
       let newChess = new Chess(chess.fen());
       newChess.move(possibleMoves[idx]);
 
-      let result = minimax(newChess.fen(), "w", depth - 1);
+      let result = minimax(newChess.fen(), "w", depth - 1, alpha, beta);
       let score = result[1];
       if (score < minScore) {
         minMove = possibleMoves[idx];
         minScore = score;
+      }
+
+      beta = Math.min(beta, score);
+      if (beta <= alpha) {
+        break;
       }
     }
     return [minMove, minScore];
