@@ -13,16 +13,16 @@ export default class DevinAI extends Player {
   * @param {Chess} chess - The Chess instance to execute the move on
   * @returns {Chess} - The Chess instance after the move has been executed
   */
-  executeMove = (chess) => {    
+  executeMove = (chess) => {
     const colour = chess.turn();
     
+    let startTime = Date.now();
     let result = minimax(chess.fen(), colour, 4, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY);
-    let bestMove = result[0];
-    let bestMoveScore = result[1];
+    let endTime = Date.now();
 
-    console.log(`Best move: ${bestMove} with score ${bestMoveScore}`);
+    console.log(`Best move: ${result[0].san} with score ${result[1]} (time taken: ${(endTime - startTime)/1000} seconds})`);
 
-    chess.move(bestMove);
+    chess.move(result[0]);
 
     console.log(`Evaluations made: ${evaluationsMade}`)
     return chess;
@@ -43,7 +43,8 @@ function minimax(fen, colour, depth, alpha, beta) {
     return [null, evaluateFen(fen)];
   }
 
-  const possibleMoves = chess.moves();
+  // Get all possible moves reordered (to improve performance for alpha-beta pruning)
+  let possibleMoves = getOrderedPossibleMoves(fen);
 
   if (colour === "w") {
     // White is the maximising player
@@ -60,6 +61,7 @@ function minimax(fen, colour, depth, alpha, beta) {
         maxScore = score;
       }
 
+      // Apply alpha-beta pruning
       alpha = Math.max(alpha, score);
       if (beta <= alpha) {
         break;
@@ -81,6 +83,7 @@ function minimax(fen, colour, depth, alpha, beta) {
         minScore = score;
       }
 
+      // Apply alpha-beta pruning
       beta = Math.min(beta, score);
       if (beta <= alpha) {
         break;
@@ -90,6 +93,41 @@ function minimax(fen, colour, depth, alpha, beta) {
   } else {
     throw new Error("Invalid colour");
   }
+}
+
+
+/*
+* @param {string} fen - The FEN string of the Chess board to evaluate
+* @returns {array} - The reordered moves
+*/
+function getOrderedPossibleMoves(fen) {
+  const chess = new Chess(fen);
+
+  let moves = chess.moves({ verbose: true });
+  
+  let checkMoves = [];
+  let takeMoves = [];
+  let otherMoves = [];
+
+  for (let idx in moves) {
+    let move = moves[idx];
+
+    if (move.flags.includes("c")) {
+      // Move is a check
+      checkMoves.push(move);
+    } else if (move.flags.includes("e")) {
+      // Move is a take
+      takeMoves.push(move);
+    } else {
+      // Move is neither a check nor a take
+      otherMoves.push(move);
+    }
+  }
+  
+  // Recombine lists
+  moves = checkMoves.concat(takeMoves, otherMoves);
+  
+  return moves;
 }
 
 /*

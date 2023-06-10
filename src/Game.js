@@ -15,7 +15,7 @@ class Game extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      fen: "start",
+      fen: new Chess().fen(),
       // square styles for active drop square
       dropSquareStyle: {},
       // custom square styles
@@ -26,11 +26,12 @@ class Game extends Component {
       square: "",
       // array of past game moves
       history: [],
-      // Colour
-      playerColour: props.playerColour,
-      // Opponent
-      opponent: props.opponent,
     };
+
+    // Player's colour
+    this.playerColour = props.playerColour;
+    // Opponent
+    this.opponent = props.opponent;
 
     if (props.playerColour === "b") {
       // Execute opponent's move first if the player's colour is black
@@ -38,19 +39,23 @@ class Game extends Component {
     }
   }
 
+  componentDidUpdate = () => setTimeout(() => {
+    // Check if it's the opponent's turn
+    if (new Chess(this.state.fen).turn() !== this.playerColour) {
+      // Execute opponent's move if it is their turn
+      this.executeOpponentMove();
+    }
+  }, 5);
+
+
   executeOpponentMove = () => {
-    if (!chess.isGameOver()) {
-      return new Promise(resolve => {
-        resolve();
-      }).then(() => {
-        // Execute opponent's move
-        let newChess = this.state.opponent.executeMove(chess);
-        this.setState(({ history, pieceSquare }) => ({
-          fen: newChess.fen(),
-          history: newChess.history({ verbose: true }),
-          squareStyles: squareStyling({ pieceSquare, history }),
-        }));
-      });
+    if (!chess.isGameOver()) {// Execute opponent's move
+      const newChess = this.opponent.executeMove(chess);
+      this.setState(({ pieceSquare }) => ({
+        fen: newChess.fen(),
+        history: newChess.history({ verbose: true }),
+        squareStyles: squareStyling({ pieceSquare, history: newChess.history({ verbose: true }) }),
+      }));
     } else {
       return null;
     }
@@ -71,13 +76,18 @@ class Game extends Component {
       if (move === null) return;
       
       // Update the board
-      this.setState(({ history, pieceSquare }) => ({
-        fen: chess.fen(),
-        history: chess.history({ verbose: true }),
-        squareStyles: squareStyling({ pieceSquare, history }),
-      }));
+      return new Promise(resolve => {
+        this.setState(({ pieceSquare }) => ({
+          fen: chess.fen(),
+          history: chess.history({ verbose: true }),
+          squareStyles: squareStyling({ pieceSquare, history: chess.history({ verbose: true }) }),
+        }));
+        resolve();
+      })
+      // }).then(() => this.executeOpponentMove());
 
-      this.executeOpponentMove();
+
+      // this.executeOpponentMove();
     } catch (error) {
       // Illegal move
       return;
@@ -104,7 +114,7 @@ class Game extends Component {
     if (chess.get(square)) {
       // There is a piece on this square
       // Enusre that the piece is the player's colour
-      if (chess.get(square).color !== this.state.playerColour) return;
+      if (chess.get(square).color !== this.playerColour) return;
       // Check if the square is already highlighted
       if (this.state.pieceSquare === square) {
         // The square is already highlighted, so unhiglight it
