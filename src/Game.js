@@ -1,7 +1,7 @@
 import React, { Component } from "react";
+import { useParams } from 'react-router-dom';
 import PropTypes from "prop-types";
 import { Chess } from "chess.js";
-
 import Chessboard from "chessboardjsx";
 
 class HumanVsHuman extends Component {
@@ -27,7 +27,7 @@ class HumanVsHuman extends Component {
 
   executeMove = (sourceSquare, targetSquare) => {
     // Check if the move is legal
-    if (sourceSquare == "" || targetSquare == "") return;
+    if (sourceSquare === "" || targetSquare === "") return;
     try {
       // Attempt to construct the move
       let move = this.game.move({
@@ -70,7 +70,7 @@ class HumanVsHuman extends Component {
     if (this.game.get(square)) {
       // There is a piece on this square
       // Check if the square is already highlighted
-      if (this.state.pieceSquare == square) {
+      if (this.state.pieceSquare === square) {
         // The square is already highlighted, so unhiglight it
         delete this.state.squareStyles[square];
         this.setState(() => ({
@@ -105,7 +105,9 @@ class HumanVsHuman extends Component {
   }
 }
 
-export default function WithMoveValidation() {
+export default function Game() {
+  const { colour, opponent } = useParams();
+
   return (
     <div>
       <HumanVsHuman>
