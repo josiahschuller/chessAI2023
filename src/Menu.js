@@ -29,6 +29,7 @@ function Form() {
           <Box style={{width: 200}}>
             <Select onChange={(event) => setOpponent(event.target.value)}>
               <option value="random">Random AI</option>
+              <option value="devin">Devin AI</option>
             </Select>
           </Box>
         </Stack>

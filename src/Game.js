@@ -5,6 +5,7 @@ import { Chess } from "chess.js";
 import Chessboard from "chessboardjsx";
 import { Box, Container, Button } from '@chakra-ui/react'
 import RandomAI from "./Players/RandomAI";
+import DevinAI from "./Players/DevinAI";
 
 const chess = new Chess();
 
@@ -38,17 +39,21 @@ class Game extends Component {
   }
 
   executeOpponentMove = () => {
-    return new Promise(resolve => {
-      resolve();
-    }).then(() => {
-      // Execute opponent's move
-      let newChess = this.state.opponent.executeMove(chess);
-      this.setState(({ history, pieceSquare }) => ({
-        fen: newChess.fen(),
-        history: newChess.history({ verbose: true }),
-        squareStyles: squareStyling({ pieceSquare, history }),
-      }));
-    });
+    if (!chess.isGameOver()) {
+      return new Promise(resolve => {
+        resolve();
+      }).then(() => {
+        // Execute opponent's move
+        let newChess = this.state.opponent.executeMove(chess);
+        this.setState(({ history, pieceSquare }) => ({
+          fen: newChess.fen(),
+          history: newChess.history({ verbose: true }),
+          squareStyles: squareStyling({ pieceSquare, history }),
+        }));
+      });
+    } else {
+      return null;
+    }
   }
 
   executeMove = (sourceSquare, targetSquare) => {
@@ -148,6 +153,9 @@ export default function PlayGame() {
     case "random":
       opponentInstance = new RandomAI();
       break;
+      case "devin":
+        opponentInstance = new DevinAI();
+        break;
     default:
   }
 
