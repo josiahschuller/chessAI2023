@@ -34,6 +34,8 @@ function Form() {
         </Stack>
         <Button
           type="submit"
+          bg="blue.100"
+          _hover={{ bg: "blue.200" }}
         >
           Play
         </Button>

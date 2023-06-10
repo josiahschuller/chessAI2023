@@ -3,26 +3,52 @@ import { useParams } from 'react-router-dom';
 import PropTypes from "prop-types";
 import { Chess } from "chess.js";
 import Chessboard from "chessboardjsx";
+import { Box, Container, Button } from '@chakra-ui/react'
+import RandomAI from "./Players/RandomAI";
 
-class HumanVsHuman extends Component {
+const chess = new Chess();
+
+class Game extends Component {
   static propTypes = { children: PropTypes.func };
 
-  state = {
-    fen: "start",
-    // square styles for active drop square
-    dropSquareStyle: {},
-    // custom square styles
-    squareStyles: {squareStyles: [{}, {}]},
-    // square with the currently clicked piece
-    pieceSquare: "",
-    // currently clicked square
-    square: "",
-    // array of past game moves
-    history: []
-  };
+  constructor(props) {
+    super(props);
+    this.state = {
+      fen: "start",
+      // square styles for active drop square
+      dropSquareStyle: {},
+      // custom square styles
+      squareStyles: {squareStyles: [{}, {}]},
+      // square with the currently clicked piece
+      pieceSquare: "",
+      // currently clicked square
+      square: "",
+      // array of past game moves
+      history: [],
+      // Colour
+      playerColour: props.playerColour,
+      // Opponent
+      opponent: props.opponent,
+    };
 
-  componentDidMount() {
-    this.game = new Chess();
+    if (props.playerColour === "b") {
+      // Execute opponent's move first if the player's colour is black
+      this.executeOpponentMove();
+    }
+  }
+
+  executeOpponentMove = () => {
+    return new Promise(resolve => {
+      resolve();
+    }).then(() => {
+      // Execute opponent's move
+      let newChess = this.state.opponent.executeMove(chess);
+      this.setState(({ history, pieceSquare }) => ({
+        fen: newChess.fen(),
+        history: newChess.history({ verbose: true }),
+        squareStyles: squareStyling({ pieceSquare, history }),
+      }));
+    });
   }
 
   executeMove = (sourceSquare, targetSquare) => {
@@ -30,7 +56,7 @@ class HumanVsHuman extends Component {
     if (sourceSquare === "" || targetSquare === "") return;
     try {
       // Attempt to construct the move
-      let move = this.game.move({
+      let move = chess.move({
         from: sourceSquare,
         to: targetSquare,
         promotion: "q" // always promote to a queen for example simplicity
@@ -38,12 +64,15 @@ class HumanVsHuman extends Component {
 
       // Illegal move
       if (move === null) return;
-
+      
+      // Update the board
       this.setState(({ history, pieceSquare }) => ({
-        fen: this.game.fen(),
-        history: this.game.history({ verbose: true }),
-        squareStyles: squareStyling({ pieceSquare, history })
+        fen: chess.fen(),
+        history: chess.history({ verbose: true }),
+        squareStyles: squareStyling({ pieceSquare, history }),
       }));
+
+      this.executeOpponentMove();
     } catch (error) {
       // Illegal move
       return;
@@ -67,8 +96,10 @@ class HumanVsHuman extends Component {
 
   onSquareClick = square => {
     // Check if there is a piece on this square
-    if (this.game.get(square)) {
+    if (chess.get(square)) {
       // There is a piece on this square
+      // Enusre that the piece is the player's colour
+      if (chess.get(square).color !== this.state.playerColour) return;
       // Check if the square is already highlighted
       if (this.state.pieceSquare === square) {
         // The square is already highlighted, so unhiglight it
@@ -105,39 +136,67 @@ class HumanVsHuman extends Component {
   }
 }
 
-export default function Game() {
+export default function PlayGame() {
   const { colour, opponent } = useParams();
 
+  // Set the orientation of the board
+  const orientation = colour === "w" ? "white" : "black";
+
+  // Set the opponent
+  let opponentInstance;
+  switch (opponent) {
+    case "random":
+      opponentInstance = new RandomAI();
+      break;
+    default:
+  }
+
   return (
-    <div>
-      <HumanVsHuman>
-        {({
-          position,
-          onDrop,
-          onMouseOutSquare,
-          squareStyles,
-          dropSquareStyle,
-          onDragOverSquare,
-          onSquareClick,
-        }) => (
-          <Chessboard
-            id="humanVsHuman"
-            width={600}
-            position={position} // fen
-            onDrop={onDrop}
-            onMouseOutSquare={onMouseOutSquare}
-            boardStyle={{
-              borderRadius: "5px",
-              boxShadow: `0 5px 15px rgba(0, 0, 0, 0.5)`
-            }}
-            squareStyles={squareStyles}
-            dropSquareStyle={dropSquareStyle}
-            onDragOverSquare={onDragOverSquare}
-            onSquareClick={onSquareClick}
-          />
-        )}
-      </HumanVsHuman>
-    </div>
+    <Box>
+      <Container>
+        <Box sx={{mb: 2}}>
+          <Game
+            playerColour={colour}
+            opponent={opponentInstance}
+          >
+            {({
+              position,
+              onDrop,
+              onMouseOutSquare,
+              squareStyles,
+              dropSquareStyle,
+              onDragOverSquare,
+              onSquareClick,
+            }) => (
+              <Chessboard
+                id="humanVsHuman"
+                width={600}
+                position={position} // fen
+                onDrop={onDrop}
+                onMouseOutSquare={onMouseOutSquare}
+                boardStyle={{
+                  borderRadius: "5px",
+                  boxShadow: `0 5px 15px rgba(0, 0, 0, 0.5)`
+                }}
+                squareStyles={squareStyles}
+                dropSquareStyle={dropSquareStyle}
+                onDragOverSquare={onDragOverSquare}
+                onSquareClick={onSquareClick}
+                orientation={orientation}
+                transitionDuration={300}
+              />
+            )}
+          </Game>
+        </Box>
+        <Button
+          onClick={() => {window.location.href = "/"}}
+          bg="blue.100"
+          _hover={{ bg: "blue.200" }}
+        >
+          Back
+        </Button>
+      </Container>
+    </Box>
   );
 }
 
