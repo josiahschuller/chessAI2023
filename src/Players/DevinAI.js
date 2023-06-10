@@ -13,75 +13,12 @@ export default class DevinAI extends Player {
   * @param {Chess} chess - The Chess instance to execute the move on
   * @returns {Chess} - The Chess instance after the move has been executed
   */
-  executeMove = (chess) => {
-    const possibleMoves = chess.moves();
-    const possibleMoveScores = possibleMoves.reduce((acc, move) => {
-      acc[move] = [];
-      return acc;
-    }, {});
-    let noScoresEvaluated = true;
-    
+  executeMove = (chess) => {    
     const colour = chess.turn();
-
-    const initialScore = evaluateFen(chess.fen(), colour);
-
-    // Iterate through possible moves
-    for (let idx in possibleMoves) {
-      let newChess = new Chess(chess.fen());
-      newChess.move(possibleMoves[idx]);
-
-      let scoreAfterMove = evaluateFen(newChess.fen(), colour);
-
-      const possibleOpponentMoves = newChess.moves();
-      // Iterate through opponent's possible moves
-      for (let idx2 in possibleOpponentMoves) {
-        let newChess2 = new Chess(newChess.fen());
-        newChess2.move(possibleOpponentMoves[idx2]);
-
-        let scoreAfterOpponentMove = evaluateFen(newChess2.fen(), colour);
-
-        if (scoreAfterOpponentMove > scoreAfterMove) {
-          // The position after the opponent's move is better than before they made their move
-          // i.e. they made a terrible move, so don't consider this move
-          continue;
-        }
-        if (scoreAfterOpponentMove < initialScore) {
-          if (noScoresEvaluated) {
-            // Consider this move just in case this is a zugzwang (i.e. every move is bad for us)
-            possibleMoveScores[possibleMoves[idx]].push(scoreAfterOpponentMove);
-            noScoresEvaluated = false;
-          }
-          // Things are looking bad for us, so don't consider this move
-          continue;
-        }
-
-
-
-        let score = recurseEvaluate(newChess2.fen(), colour, 1);
-        
-        possibleMoveScores[possibleMoves[idx]].push(score);
-      }
-    }
-
-    console.log(possibleMoveScores);
-
-    // Best move is the move with the best worst score - the maximum of the worst case scenarios
-    // i.e. Assume the opponent will make the best move every time
-    let bestMove = null;
-    let bestMoveScore = Number.NEGATIVE_INFINITY;
-
-    for (let move in possibleMoveScores) {
-      if (possibleMoveScores[move].length !== 0) {
-        // Find the worst score for this move
-        let worstScore = Math.min(...possibleMoveScores[move]);
-  
-        // If this move has the best worst score, then it is the best move
-        if (worstScore > bestMoveScore) {
-          bestMove = move;
-          bestMoveScore = worstScore;
-        }        
-      }
-    }
+    
+    let result = minimax(chess.fen(), colour, 4);
+    let bestMove = result[0];
+    let bestMoveScore = result[1];
 
     console.log(`Best move: ${bestMove} with score ${bestMoveScore}`);
 
@@ -93,52 +30,56 @@ export default class DevinAI extends Player {
 }
 
 
-
-/*
-* @param {string} fen - The FEN string of the Chess board to evaluate
-* @param {str} colour of the player - "w" or "b"
-* @param {number} depth - The depth to recurse to
-* @returns {array} - An array of all the scores of the possible moves
-*/
-function recurseEvaluate(fen, colour, depth) {
-  if (depth === 0) {
-    // No more recursing to do, so evaluate the board
-    return evaluateFen(fen, colour);
+function minimax(fen, colour, depth) {
+  const chess = new Chess(fen);
+  if (depth === 0 || chess.isGameOver()) {
+    return [null, evaluateFen(fen)];
   }
-
-  let chess = new Chess(fen);
 
   const possibleMoves = chess.moves();
-  let scores = [];
 
-  // Iterate through possible moves
-  for (let idx in possibleMoves) {
-    let newChess = new Chess(chess.fen());
-    newChess.move(possibleMoves[idx]);
+  if (colour === "w") {
+    // White is the maximising player
+    let maxMove = null;
+    let maxScore = Number.NEGATIVE_INFINITY;
+    for (let idx in possibleMoves) {
+      let newChess = new Chess(chess.fen());
+      newChess.move(possibleMoves[idx]);
 
-    const possibleOpponentMoves = newChess.moves();
-    // Iterate through opponent's possible moves
-    for (let idx2 in possibleOpponentMoves) {
-      let newChess2 = new Chess(newChess.fen());
-      newChess2.move(possibleOpponentMoves[idx2]);
-
-      // Keep recursing
-      let score = recurseEvaluate(newChess2.fen(), colour, depth - 1);
-      scores.push(score);
+      let result = minimax(newChess.fen(), "b", depth - 1);
+      let score = result[1];
+      if (score > maxScore) {
+        maxMove = possibleMoves[idx];
+        maxScore = score;
+      }
     }
-  }
+    return [maxMove, maxScore];
+  } else if (colour === "b") {
+    // Black is the minimising player
+    let minMove = null;
+    let minScore = Number.POSITIVE_INFINITY;
+    for (let idx in possibleMoves) {
+      let newChess = new Chess(chess.fen());
+      newChess.move(possibleMoves[idx]);
 
-  // Find the worst score for this move
-  let worstScore = Math.min(...scores);
-  return worstScore;
+      let result = minimax(newChess.fen(), "w", depth - 1);
+      let score = result[1];
+      if (score < minScore) {
+        minMove = possibleMoves[idx];
+        minScore = score;
+      }
+    }
+    return [minMove, minScore];
+  } else {
+    throw new Error("Invalid colour");
+  }
 }
 
 /*
 * @param {string} fen - The FEN string of the Chess board to evaluate
-* @param {str} colour of the player - "w" or "b"
 * @returns {number} - The evaluation of the FEN string (White's value vs Black's value)
 */
-function evaluateFen(fen, colour) {
+function evaluateFen(fen) {
   evaluationsMade += 1;
   const chess = new Chess(fen);
   const board = chess.board();
@@ -155,13 +96,7 @@ function evaluateFen(fen, colour) {
   // Evaluate Black's position
   const blackScore = evaluateColour(boardFlipped, "b");
 
-  let timeEnd = new Date();
-
-  if (colour === "w") {
-    return whiteScore - blackScore;
-  } else {
-    return blackScore - whiteScore;
-  }
+  return whiteScore - blackScore;
 }
 
 /*
