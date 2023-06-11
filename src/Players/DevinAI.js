@@ -14,6 +14,7 @@ export default class DevinAI extends Player {
   * @returns {Chess} - The Chess instance after the move has been executed
   */
   executeMove = (chess) => {
+    evaluationsMade = 0;
     const colour = chess.turn();
     
     let startTime = Date.now();
@@ -105,19 +106,35 @@ function getOrderedPossibleMoves(fen) {
 
   let moves = chess.moves({ verbose: true });
   
-  let checkMoves = [];
-  let takeMoves = [];
+  let goodTakes = [];
+  let promotionMoves = [];
+  let equalTakes = [];
   let otherMoves = [];
+  let badTakes = [];
+
+  const pieceOrderings = ["p", "nb", "r", "q"];
 
   for (let idx in moves) {
     let move = moves[idx];
 
-    if (move.flags.includes("c")) {
-      // Move is a check
-      checkMoves.push(move);
-    } else if (move.flags.includes("e")) {
-      // Move is a take
-      takeMoves.push(move);
+    if (move.flags.includes("p")) {
+      // Move is a promotion
+      promotionMoves.push(move);
+    } else if (move.flags.includes("c")) {
+      // Move is a capture
+      const movePieceIndex = pieceOrderings.findIndex(item => item.includes(move.piece));
+      const takePieceIndex = pieceOrderings.findIndex(item => item.includes(move.captured));
+
+      if (movePieceIndex < takePieceIndex) {
+        // Move is a good take
+        goodTakes.push(move);
+      } else if (movePieceIndex === takePieceIndex) {
+        // Move is an equal take
+        equalTakes.push(move);
+      } else {
+        // Move is a bad take
+        badTakes.push(move);
+      }
     } else {
       // Move is neither a check nor a take
       otherMoves.push(move);
@@ -125,7 +142,7 @@ function getOrderedPossibleMoves(fen) {
   }
   
   // Recombine lists
-  moves = checkMoves.concat(takeMoves, otherMoves);
+  moves = goodTakes.concat(promotionMoves, equalTakes, otherMoves, badTakes);
   
   return moves;
 }
@@ -139,8 +156,23 @@ function evaluateFen(fen) {
   const chess = new Chess(fen);
   const board = chess.board();
 
+  // Check for checkmate
+  if (chess.isCheckmate()) {
+    if (chess.turn() === "w") {
+      // Black wins
+      return -99999999;
+    } else {
+      // White wins
+      return 99999999;
+    }
+  }
+  // Check for draw
+  if (chess.isDraw()) {
+    return 0;
+  }
+
   // Evaluate White's position
-  const whiteScore = evaluateColour(board, "w");
+  let whiteScore = evaluateColour(board, "w");
 
   // Board flipped is the board from Black's perspective
   const boardFlipped = [];
@@ -149,7 +181,17 @@ function evaluateFen(fen) {
   }
 
   // Evaluate Black's position
-  const blackScore = evaluateColour(boardFlipped, "b");
+  let blackScore = evaluateColour(boardFlipped, "b");
+
+  // Give points if one side checks the other side
+  const checkScore = 10;
+  if (chess.inCheck()) {
+    if (chess.turn() === "w") {
+      blackScore += checkScore;
+    } else {
+      whiteScore += checkScore;
+    }
+  }
 
   return whiteScore - blackScore;
 }
