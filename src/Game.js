@@ -48,7 +48,7 @@ class Game extends Component {
       // Execute opponent's move if it is their turn
       this.executeOpponentMove();
     }
-  }, 5);
+  }, 10);
 
 
   executeOpponentMove = () => {
